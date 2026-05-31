@@ -4,9 +4,12 @@ from discord.ext import commands
 import json
 from datetime import datetime
 import asyncio
+import os
+from keep_alive import keep_alive  # ✅ Adicionado para manter online
 
 # ---------------------- CONFIGURAÇÕES ----------------------
-TOKEN = "COLOQUE_SEU_TOKEN_AQUI" # <-- COLOCA SEU TOKEN AQUI ENTRE AS ASPAS
+# ✅ AGORA O TOKEN VAI PEGAR DO LOCAL SEGURO, NÃO COLOQUE NADA AQUI!
+TOKEN = os.environ.get("TOKEN")
 
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="/", intents=intents)
@@ -234,4 +237,5 @@ async def atualizar_historico(guild):
 
 
 # ---------------------- RODAR BOT ----------------------
-bot.run(os.environ['TOKEN'])
+keep_alive()  # ✅ Mantém o bot online 24h
+bot.run(TOKEN)
