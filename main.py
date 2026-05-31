@@ -234,4 +234,4 @@ async def atualizar_historico(guild):
 
 
 # ---------------------- RODAR BOT ----------------------
-bot.run("MTUxMDY3Mjk2Mjg0NjU5MzI2NA.GVC-nx.0kFbw86pCCO4pGcIpdOL_lMiBVHpvZkGipLM3Y")
+bot.run("MTUxMDY2NjAwNzAzMzczNzEzNA.GVCnx0kFbw86pCC04pGcIpId0L_lMiBVHpvZkGIpLM3Y")
