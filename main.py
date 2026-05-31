@@ -34,7 +34,7 @@ config = carregar_dados(CONFIG_FILE)
 historico = carregar_dados(HISTORICO_FILE)
 
 
-# ✅ NOVO: FUNÇÃO PARA MANTER ELE ACORDADO
+# ✅ FUNÇÃO PARA MANTER ELE ACORDADO
 @bot.event
 async def on_ready():
     print(f"✅ Bot ONLINE como: {bot.user}")
@@ -46,15 +46,15 @@ async def on_ready():
 
     # Loop infinito para manter ele ligado
     while True:
-        await asyncio.sleep(300)  # 5 minutos
+        await asyncio.sleep(300) # 5 minutos
         try:
             # Envia uma mensagem de "ping" para ele mesmo, só para não dormir
-            await bot.get_channel(config.get("canais", {}).get("painel", bot.user.id)).typing()
+            await bot.get_channel(123456789).typing() # Canal qualquer, só para manter vivo
         except:
             pass
 
 
-# ---------------------- COMANDOS DE CONFIGURAÇÃO ----------------------
+# ---------------------- COMANDOS DE CONFIGURAÇÃO (SEPARADO POR SERVIDOR) ----------------------
 
 @tree.command(name="configcanal", description="Define os canais do sistema")
 @app_commands.describe(tipo="Escolha: painel, solicitação ou histórico", canal="Mencione o canal")
@@ -66,9 +66,14 @@ async def configcanal(interaction: discord.Interaction, tipo: str, canal: discor
     if tipo.lower() not in tipos_validos:
         return await interaction.response.send_message("❌ Tipo inválido! Use: painel, solicitação ou histórico", ephemeral=True)
 
-    if "canais" not in config:
-        config["canais"] = {}
-    config["canais"][tipo.lower()] = canal.id
+    # 🆕 SALVA CONFIGURAÇÃO POR SERVIDOR
+    guild_id = str(interaction.guild.id)
+    if guild_id not in config:
+        config[guild_id] = {}
+    if "canais" not in config[guild_id]:
+        config[guild_id]["canais"] = {}
+
+    config[guild_id]["canais"][tipo.lower()] = canal.id
     salvar_dados(CONFIG_FILE, config)
     await interaction.response.send_message(f"✅ Canal de **{tipo}** definido: {canal.mention}")
 
@@ -78,15 +83,22 @@ async def painelconfig(interaction: discord.Interaction, cargo: discord.Role):
     if not interaction.user.guild_permissions.administrator:
         return await interaction.response.send_message("❌ Sem permissão!", ephemeral=True)
 
-    config["cargo_aprovador"] = cargo.id
+    # 🆕 SALVA CONFIGURAÇÃO POR SERVIDOR
+    guild_id = str(interaction.guild.id)
+    if guild_id not in config:
+        config[guild_id] = {}
+    config[guild_id]["cargo_aprovador"] = cargo.id
     salvar_dados(CONFIG_FILE, config)
     await interaction.response.send_message(f"✅ Cargo aprovador: {cargo.mention}")
 
 
 @tree.command(name="configver", description="Mostra todas as configurações")
 async def configver(interaction: discord.Interaction):
-    canais = config.get("canais", {})
-    cargo_id = config.get("cargo_aprovador")
+    # 🆕 PEGA CONFIGURAÇÃO SÓ DESSE SERVIDOR
+    guild_id = str(interaction.guild.id)
+    dados_guild = config.get(guild_id, {})
+    canais = dados_guild.get("canais", {})
+    cargo_id = dados_guild.get("cargo_aprovador")
     cargo = interaction.guild.get_role(cargo_id) if cargo_id else "Não definido"
 
     embed = discord.Embed(title="⚙️ Configurações", color=discord.Color.blurple())
@@ -99,19 +111,27 @@ async def configver(interaction: discord.Interaction):
 async def limparhistorico(interaction: discord.Interaction):
     if not interaction.user.guild_permissions.administrator:
         return await interaction.response.send_message("❌ Sem permissão!", ephemeral=True)
-    global historico
-    historico = {}
-    salvar_dados(HISTORICO_FILE, historico)
+
+    # 🆕 APAGA SÓ O HISTÓRICO DESSE SERVIDOR
+    guild_id = str(interaction.guild.id)
+    if guild_id in historico:
+        del historico[guild_id]
+        salvar_dados(HISTORICO_FILE, historico)
     await interaction.response.send_message("✅ Histórico limpo!")
 
 
-# ---------------------- PERSONALIZAÇÃO DO PAINEL ----------------------
+# ---------------------- PERSONALIZAÇÃO DO PAINEL (SEPARADO POR SERVIDOR) ----------------------
 
 @tree.command(name="título", description="Muda o título do painel")
 async def titulo(interaction: discord.Interaction, *, texto: str):
     if not interaction.user.guild_permissions.administrator:
         return await interaction.response.send_message("❌ Sem permissão!", ephemeral=True)
-    config["titulo"] = texto
+
+    # 🆕 SALVA POR SERVIDOR
+    guild_id = str(interaction.guild.id)
+    if guild_id not in config:
+        config[guild_id] = {}
+    config[guild_id]["titulo"] = texto
     salvar_dados(CONFIG_FILE, config)
     await interaction.response.send_message(f"✅ Título: `{texto}`")
 
@@ -120,7 +140,12 @@ async def titulo(interaction: discord.Interaction, *, texto: str):
 async def descricao(interaction: discord.Interaction, *, texto: str):
     if not interaction.user.guild_permissions.administrator:
         return await interaction.response.send_message("❌ Sem permissão!", ephemeral=True)
-    config["descricao"] = texto
+
+    # 🆕 SALVA POR SERVIDOR
+    guild_id = str(interaction.guild.id)
+    if guild_id not in config:
+        config[guild_id] = {}
+    config[guild_id]["descricao"] = texto
     salvar_dados(CONFIG_FILE, config)
     await interaction.response.send_message("✅ Descrição salva!")
 
@@ -129,7 +154,12 @@ async def descricao(interaction: discord.Interaction, *, texto: str):
 async def tumber(interaction: discord.Interaction, link: str):
     if not interaction.user.guild_permissions.administrator:
         return await interaction.response.send_message("❌ Sem permissão!", ephemeral=True)
-    config["imagem"] = link
+
+    # 🆕 SALVA POR SERVIDOR
+    guild_id = str(interaction.guild.id)
+    if guild_id not in config:
+        config[guild_id] = {}
+    config[guild_id]["imagem"] = link
     salvar_dados(CONFIG_FILE, config)
     await interaction.response.send_message("✅ Imagem definida!")
 
@@ -143,6 +173,12 @@ class FormJustificativa(discord.ui.Modal, title="📝 Enviar Justificativa"):
     motivo = discord.ui.TextInput(label="MOTIVO", style=discord.TextStyle.paragraph, required=True)
 
     async def on_submit(self, interaction: discord.Interaction):
+        # 🆕 PEGA DADOS SÓ DESSE SERVIDOR
+        guild_id = str(interaction.guild.id)
+        dados_guild = config.get(guild_id, {})
+        canais = dados_guild.get("canais", {})
+        cargo_id = dados_guild.get("cargo_aprovador")
+
         dados = {
             "nick": self.nick.value,
             "id": self.id_user.value,
@@ -153,8 +189,7 @@ class FormJustificativa(discord.ui.Modal, title="📝 Enviar Justificativa"):
         }
 
         # Enviar para canal de solicitações
-        canal_sol = bot.get_channel(config["canais"]["solicitação"])
-        cargo_id = config.get("cargo_aprovador")
+        canal_sol = bot.get_channel(canais.get("solicitação"))
 
         embed = discord.Embed(title="📩 Nova Solicitação", color=discord.Color.yellow())
         embed.add_field(name="👤 Nome", value=dados["nick"], inline=True)
@@ -173,7 +208,10 @@ class FormJustificativa(discord.ui.Modal, title="📝 Enviar Justificativa"):
                     return await inter.response.send_message("❌ Não pode!", ephemeral=True)
 
                 dados["status"] = "aceita"
-                historico[dados["id"]] = dados
+                # 🆕 SALVA HISTÓRICO POR SERVIDOR
+                if guild_id not in historico:
+                    historico[guild_id] = {}
+                historico[guild_id][dados["id"]] = dados
                 salvar_dados(HISTORICO_FILE, historico)
 
                 # Avisar no PV
@@ -191,7 +229,10 @@ class FormJustificativa(discord.ui.Modal, title="📝 Enviar Justificativa"):
                     return await inter.response.send_message("❌ Não pode!", ephemeral=True)
 
                 dados["status"] = "recusada"
-                historico[dados["id"]] = dados
+                # 🆕 SALVA HISTÓRICO POR SERVIDOR
+                if guild_id not in historico:
+                    historico[guild_id] = {}
+                historico[guild_id][dados["id"]] = dados
                 salvar_dados(HISTORICO_FILE, historico)
 
                 try:
@@ -202,19 +243,25 @@ class FormJustificativa(discord.ui.Modal, title="📝 Enviar Justificativa"):
                 await atualizar_historico(inter.guild)
                 await inter.response.edit_message(content="❌ RECUSADO", embed=embed, view=None)
 
+
         await canal_sol.send(embed=embed, view=Botoes())
         await interaction.response.send_message("✅ Enviado! Aguarde análise.", ephemeral=True)
 
 
 @tree.command(name="painel", description="Mostra o painel principal")
 async def painel(interaction: discord.Interaction):
-    canal_painel = config.get("canais", {}).get("painel")
+    # 🆕 PEGA DADOS SÓ DESSE SERVIDOR
+    guild_id = str(interaction.guild.id)
+    dados_guild = config.get(guild_id, {})
+    canais = dados_guild.get("canais", {})
+    canal_painel = canais.get("painel")
+
     if interaction.channel.id != canal_painel:
         return await interaction.response.send_message("❌ Só funciona no canal do Painel!", ephemeral=True)
 
-    titulo = config.get("titulo", "📋 Sistema de Justificativas")
-    desc = config.get("descricao", "Clique abaixo para enviar")
-    img = config.get("imagem", None)
+    titulo = dados_guild.get("titulo", "📋 Sistema de Justificativas")
+    desc = dados_guild.get("descricao", "Clique abaixo para enviar")
+    img = dados_guild.get("imagem", None)
 
     embed = discord.Embed(title=titulo, description=desc, color=discord.Color.green())
     if img: embed.set_thumbnail(url=img)
@@ -229,11 +276,17 @@ async def painel(interaction: discord.Interaction):
 
 # ---------------------- ATUALIZAR HISTÓRICO ----------------------
 async def atualizar_historico(guild):
-    canal_hist = bot.get_channel(config["canais"]["histórico"])
+    # 🆕 PEGA HISTÓRICO SÓ DESSE SERVIDOR
+    guild_id = str(guild.id)
+    dados_guild = config.get(guild_id, {})
+    canais = dados_guild.get("canais", {})
+    canal_hist = bot.get_channel(canais.get("histórico"))
+
     await canal_hist.purge(limit=100)
 
     texto = ""
-    for dado in historico.values():
+    historico_guild = historico.get(guild_id, {})
+    for dado in historico_guild.values():
         if dado["status"] == "aceita":
             texto += f"`{dado['nick']}` | ✅️ - aceita\n"
         elif dado["status"] == "recusada":
