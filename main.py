@@ -5,10 +5,9 @@ import json
 from datetime import datetime
 import asyncio
 import os
-from keep_alive import keep_alive  # ✅ Adicionado para manter online
+from keep_alive import keep_alive
 
 # ---------------------- CONFIGURAÇÕES ----------------------
-# ✅ AGORA O TOKEN VAI PEGAR DO LOCAL SEGURO, NÃO COLOQUE NADA AQUI!
 TOKEN = os.environ.get("TOKEN")
 
 intents = discord.Intents.all()
@@ -34,16 +33,26 @@ def salvar_dados(arquivo, dados):
 config = carregar_dados(CONFIG_FILE)
 historico = carregar_dados(HISTORICO_FILE)
 
-# ---------------------- EVENTO QUANDO LIGA ----------------------
+
+# ✅ NOVO: FUNÇÃO PARA MANTER ELE ACORDADO
 @bot.event
 async def on_ready():
     print(f"✅ Bot ONLINE como: {bot.user}")
-    # Sincroniza os comandos (ISSO FAZ APARECER OS COMANDOS!)
     try:
         synced = await tree.sync()
         print(f"🔄 Comandos sincronizados: {len(synced)}")
     except Exception as e:
         print(f"❌ Erro ao sincronizar: {e}")
+
+    # Loop infinito para manter ele ligado
+    while True:
+        await asyncio.sleep(300)  # 5 minutos
+        try:
+            # Envia uma mensagem de "ping" para ele mesmo, só para não dormir
+            await bot.get_channel(config.get("canais", {}).get("painel", bot.user.id)).typing()
+        except:
+            pass
+
 
 # ---------------------- COMANDOS DE CONFIGURAÇÃO ----------------------
 
@@ -237,5 +246,5 @@ async def atualizar_historico(guild):
 
 
 # ---------------------- RODAR BOT ----------------------
-keep_alive()  # ✅ Mantém o bot online 24h
+keep_alive()
 bot.run(TOKEN)
