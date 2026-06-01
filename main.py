@@ -8,28 +8,22 @@ import os
 import base64
 from keep_alive import keep_alive
 
-# ---------------------- 🛡️ CONFIGURAÇÕES DE SEGURANÇA TOTAL 🛡️ ----------------------
-
-# ✅ PROTEÇÃO 1: Token só pega da variável, e verifica se existe (não roda se não tiver)
-# NUNCA MAIS ESCREVA O TOKEN AQUI, SÓ NAS VARIÁVEIS DO RENDER
+# ---------------------- 🛡️ SEGURANÇA TOTAL 🛡️ ----------------------
 TOKEN = os.environ.get("TOKEN")
 if not TOKEN:
-    print("🔴 ERRO CRÍTICO: TOKEN NÃO ENCONTRADO! BOT PARADO POR SEGURANÇA.")
+    print("🔴 TOKEN NÃO ENCONTRADO! BOT PARADO.")
     exit()
 
-# ✅ PROTEÇÃO 2: Nomes de arquivos ocultos e codificados (não aparecem em buscas)
-# Mesmo que abram a pasta, não sabem o que é cada arquivo
-CONFIG_FILE = ".cfg_data_0x1a9f.json"
-HISTORICO_FILE = ".hist_data_0x2b8e.json"
-CHAMADA_FILE = ".cham_data_0x3c7d.json"
+# Nomes de arquivos ocultos e seguros
+CONFIG_FILE = ".cfg_secure_9f2d.json"
+HISTORICO_FILE = ".hist_secure_7x4a.json"
+CHAMADA_FILE = ".cham_secure_3z8b.json"
 
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="/", intents=intents)
 tree = bot.tree
 
-# ---------------------- 🔐 SISTEMA DE CRIPTOGRAFIA DE DADOS (NOVO) ----------------------
-# ✅ PROTEÇÃO 3: Todos os dados salvos são CODIFICADOS. Se abrirem o arquivo, só verão letras embaralhadas
-# NÃO DÁ PARA LER NADA MESMO QUE PEGUEM O ARQUIVO
+# ---------------------- 🔐 SISTEMA DE CRIPTOGRAFIA (IMPOSSÍVEL LER DADOS) ----------------------
 def codificar_dados(dados):
     texto_json = json.dumps(dados, indent=4, ensure_ascii=False)
     return base64.b64encode(texto_json.encode('utf-8')).decode('utf-8')
@@ -46,23 +40,23 @@ def carregar_dados(arquivo):
     try:
         with open(arquivo, "r", encoding="utf-8") as f:
             conteudo = f.read()
-            return decodificar_dados(conteudo) # Decodifica antes de usar
+            return decodificar_dados(conteudo)
     except:
         return {}
 
 def salvar_dados(arquivo, dados):
     try:
         with open(arquivo, "w", encoding="utf-8") as f:
-            f.write(codificar_dados(dados)) # Salva tudo codificado
+            f.write(codificar_dados(dados))
     except Exception as e:
-        print(f"⚠️ Erro ao salvar: {e}")
+        print(f"Erro ao salvar: {e}")
 
-# Carrega os dados normalmente, mas eles estão protegidos
+# Carrega os dados
 config = carregar_dados(CONFIG_FILE)
 historico = carregar_dados(HISTORICO_FILE)
 dados_chamada = carregar_dados(CHAMADA_FILE)
 
-# ---------------------- ✅ FUNÇÃO PARA MANTER ELE ACORDADO ----------------------
+# ---------------------- ✅ MANTER ONLINE ----------------------
 @bot.event
 async def on_ready():
     print(f"✅ Bot ONLINE como: {bot.user}")
@@ -70,17 +64,14 @@ async def on_ready():
         synced = await tree.sync()
         print(f"🔄 Comandos sincronizados: {len(synced)}")
     except Exception as e:
-        print(f"❌ Erro ao sincronizar: {e}")
+        print(f"❌ Erro: {e}")
 
     while True:
         await asyncio.sleep(300)
 
-# ---------------------- 🚀 OTIMIZAÇÃO: CONFIGCANAL COM OPÇÕES ----------------------
+# ---------------------- 🚀 CONFIGURAR CANAIS ----------------------
 @tree.command(name="configcanal", description="Define os canais do sistema")
-@app_commands.describe(
-    tipo="Escolha qual canal configurar",
-    canal="Mencione o canal ou cole o ID"
-)
+@app_commands.describe(tipo="Escolha", canal="ID ou Menção")
 @app_commands.choices(tipo=[
     app_commands.Choice(name="📌 Painel", value="painel"),
     app_commands.Choice(name="📩 Solicitação", value="solicitação"),
@@ -94,7 +85,7 @@ async def configcanal(interaction: discord.Interaction, tipo: app_commands.Choic
         canal_id = int(canal.strip("<>#"))
         canal_obj = bot.get_channel(canal_id)
         if not canal_obj:
-            return await interaction.response.send_message("❌ Canal não encontrado ou sem acesso!", ephemeral=True)
+            return await interaction.response.send_message("❌ Canal não encontrado!", ephemeral=True)
     except:
         return await interaction.response.send_message("❌ ID inválido!", ephemeral=True)
 
@@ -104,10 +95,10 @@ async def configcanal(interaction: discord.Interaction, tipo: app_commands.Choic
 
     config[guild_id]["canais"][tipo.value] = canal_obj.id
     salvar_dados(CONFIG_FILE, config)
-    await interaction.response.send_message(f"✅ Canal de {tipo.name} definido: {canal_obj.mention}")
+    await interaction.response.send_message(f"✅ Canal de {tipo.name}: {canal_obj.mention}")
 
-# ---------------------- 🚀 ADICIONADO: VÁRIOS CARGOS APROVADORES ----------------------
-@tree.command(name="addcargoaprovador", description="Adiciona um cargo que pode aprovar/recusar")
+# ---------------------- 🚀 CARGOS APROVADORES ----------------------
+@tree.command(name="addcargoaprovador", description="Adiciona cargo que aprova")
 async def addcargoaprovador(interaction: discord.Interaction, cargo: discord.Role):
     if not interaction.user.guild_permissions.administrator:
         return await interaction.response.send_message("❌ Sem permissão!", ephemeral=True)
@@ -120,39 +111,38 @@ async def addcargoaprovador(interaction: discord.Interaction, cargo: discord.Rol
     if cargo.id not in config[guild_id]["cargos_aprovadores"]:
         config[guild_id]["cargos_aprovadores"].append(cargo.id)
         salvar_dados(CONFIG_FILE, config)
-        await interaction.response.send_message(f"✅ Cargo {cargo.mention} adicionado como aprovador!")
+        await interaction.response.send_message(f"✅ Cargo {cargo.mention} adicionado!")
     else:
-        await interaction.response.send_message(f"⚠️ Esse cargo já é aprovador!")
+        await interaction.response.send_message(f"⚠️ Já existe!", ephemeral=True)
 
-@tree.command(name="listacargosaprovadores", description="Mostra todos os cargos que aprovam")
+@tree.command(name="listacargosaprovadores", description="Lista cargos aprovadores")
 async def listacargosaprovadores(interaction: discord.Interaction):
     guild_id = str(interaction.guild.id)
     cargos_ids = config.get(guild_id, {}).get("cargos_aprovadores", [])
     if not cargos_ids:
-        return await interaction.response.send_message("❌ Nenhum cargo aprovador cadastrado!", ephemeral=True)
+        return await interaction.response.send_message("❌ Nenhum cargo cadastrado!", ephemeral=True)
 
     texto = ""
     for cid in cargos_ids:
         cargo = interaction.guild.get_role(cid)
         if cargo: texto += f"• {cargo.mention}\n"
-    await interaction.response.send_message(f"📋 Cargos Aprovadores:\n{texto}")
+    await interaction.response.send_message(f"📋 Cargos:\n{texto}")
 
-# ---------------------- 🚀 SISTEMA DE CHAMADAS / PRESENÇA ----------------------
-@tree.command(name="configchm", description="Configura tudo da Chamada e abre o painel")
+# ---------------------- 🚀 SISTEMA DE CHAMADAS ----------------------
+@tree.command(name="configchm", description="Configura Chamada e Abre Painel")
 async def configchm(interaction: discord.Interaction):
     if not interaction.user.guild_permissions.administrator:
         return await interaction.response.send_message("❌ Sem permissão!", ephemeral=True)
 
-       class EditarChamada(discord.ui.Modal, title="⚙️ Configurar Chamada"):
+    class EditarChamada(discord.ui.Modal, title="⚙️ Configurar Chamada"):
         titulo = discord.ui.TextInput(label="📌 Título", required=True, default="CHAMADA DE AÇÃO")
         descricao = discord.ui.TextInput(label="📝 Descrição", style=discord.TextStyle.paragraph, required=True, default="Marque presença confirmando sua participação")
-        acao = discord.ui.TextInput(label="⚡ Qual Ação?", required=True, placeholder="Ex: Reunião, Treinamento, Operação...")
-        imagem = discord.ui.TextInput(label="🖼️ Link da Imagem", required=False)
-        cargo_membros = discord.ui.TextInput(label="👤 ID do Cargo MEMBROS", required=True, placeholder="Cole o ID do cargo que é dos membros")
+        acao = discord.ui.TextInput(label="⚡ Qual Ação?", required=True, placeholder="Ex: Reunião")
+        imagem = discord.ui.TextInput(label="🖼️ Link Imagem", required=False)
+        cargo_membros = discord.ui.TextInput(label="👤 ID Cargo MEMBROS", required=True)
 
         async def on_submit(self, inter: discord.Interaction):
             guild_id = str(inter.guild.id)
-            # LIMPA HISTÓRICO ANTIGO AUTOMATICAMENTE
             dados_chamada[guild_id] = {
                 "titulo": self.titulo.value,
                 "descricao": self.descricao.value,
@@ -164,7 +154,6 @@ async def configchm(interaction: discord.Interaction):
             }
             salvar_dados(CHAMADA_FILE, dados_chamada)
 
-            # CRIA O PAINEL DE CHAMADA
             embed = discord.Embed(
                 title=f"📢 {dados_chamada[guild_id]['titulo']}",
                 description=f"{dados_chamada[guild_id]['descricao']}\n\n⚡ AÇÃO: {dados_chamada[guild_id]['acao']}",
@@ -181,30 +170,30 @@ async def configchm(interaction: discord.Interaction):
                 async def sim(self, i: discord.Interaction, btn: discord.ui.Button):
                     g_id = str(i.guild.id)
                     if not dados_chamada.get(g_id, {}).get("aberto"):
-                        return await i.response.send_message("❌ Chamada já encerrada!", ephemeral=True)
+                        return await i.response.send_message("❌ Encerrada!", ephemeral=True)
 
                     dados_chamada[g_id]["presencas"][str(i.user.id)] = {"nome": i.user.display_name, "status": "presente"}
                     salvar_dados(CHAMADA_FILE, dados_chamada)
-                    await i.response.send_message("✅ Presença marcada com sucesso!", ephemeral=True)
+                    await i.response.send_message("✅ Presença confirmada!", ephemeral=True)
                     await atualizar_historico_chamada(i.guild)
 
                 @discord.ui.button(label="❌ Não vou / Justificar", style=discord.ButtonStyle.red, custom_id="presenca_nao")
                 async def nao(self, i: discord.Interaction, btn: discord.ui.Button):
                     g_id = str(i.guild.id)
                     if not dados_chamada.get(g_id, {}).get("aberto"):
-                        return await i.response.send_message("❌ Chamada já encerrada!", ephemeral=True)
+                        return await i.response.send_message("❌ Encerrada!", ephemeral=True)
 
                     dados_chamada[g_id]["presencas"][str(i.user.id)] = {"nome": i.user.display_name, "status": "ausente"}
                     salvar_dados(CHAMADA_FILE, dados_chamada)
-                    await i.response.send_message("❌ Registrado como ausente. Você pode justificar pelo painel de justificativas.", ephemeral=True)
+                    await i.response.send_message("❌ Registrado como ausente.", ephemeral=True)
                     await atualizar_historico_chamada(i.guild)
 
             await inter.channel.send(embed=embed, view=BotoesChamada())
-            await inter.response.send_message("✅ Chamada configurada e aberta com sucesso!", ephemeral=True)
+            await inter.response.send_message("✅ Chamada aberta!", ephemeral=True)
 
     await interaction.response.send_modal(EditarChamada())
 
-# Função para atualizar histórico do jeito que você pediu
+# ---------------------- 🔄 ATUALIZAR HISTÓRICO CHAMADA ----------------------
 async def atualizar_historico_chamada(guild):
     guild_id = str(guild.id)
     dados = dados_chamada.get(guild_id, {})
@@ -217,7 +206,6 @@ async def atualizar_historico_chamada(guild):
     ausentes = []
     justificados = []
 
-    # Quem marcou presença
     for uid, info in dados.get("presencas", {}).items():
         if info["status"] == "presente":
             presentes.append(info["nome"])
@@ -230,7 +218,6 @@ async def atualizar_historico_chamada(guild):
             else:
                 ausentes.append(info["nome"])
 
-    # Quem NÃO marcou presença
     for membro in cargo_membros.members:
         if str(membro.id) not in dados.get("presencas", {}):
             if guild_id in historico and str(membro.id) in historico[guild_id]:
@@ -252,14 +239,14 @@ async def atualizar_historico_chamada(guild):
     if ausentes:
         for a in ausentes: texto += f"{a} | ❌️ NÃO MARCOU PRESENÇA\n"
     else:
-        texto += "Nenhum membro ausente\n"
+        texto += "Nenhum ausente\n"
 
     texto += "\n———————————————————————————\n"
 
     if justificados:
         for j in justificados: texto += f"{j} | ☑️ JUSTIFICOU\n"
     else:
-        texto += "Ninguém justificou ainda\n"
+        texto += "Ninguém justificou\n"
 
     canal_hist = bot.get_channel(config.get(guild_id, {}).get("canais", {}).get("histórico"))
     if canal_hist:
@@ -268,7 +255,7 @@ async def atualizar_historico_chamada(guild):
         emb.set_footer(text=f"Ação: {dados.get('acao')}")
         await canal_hist.send(embed=emb)
 
-# ---------------------- 🚀 SISTEMA DE JUSTIFICATIVA (ATUALIZADO E SEGURO) ----------------------
+# ---------------------- 🚀 SISTEMA DE JUSTIFICATIVA ----------------------
 class FormJustificativa(discord.ui.Modal, title="📝 Enviar Justificativa"):
     nick = discord.ui.TextInput(label="NICK", required=True)
     id_user = discord.ui.TextInput(label="ID", required=True)
@@ -282,7 +269,7 @@ class FormJustificativa(discord.ui.Modal, title="📝 Enviar Justificativa"):
         cargos_aprov = dados_guild.get("cargos_aprovadores", [])
 
         if "solicitação" not in canais:
-            return await interaction.response.send_message("❌ Configure os canais primeiro!", ephemeral=True)
+            return await interaction.response.send_message("❌ Configure canais primeiro!", ephemeral=True)
 
         dados = {
             "nick": self.nick.value,
@@ -309,7 +296,7 @@ class FormJustificativa(discord.ui.Modal, title="📝 Enviar Justificativa"):
             async def aceitar(self, inter: discord.Interaction, btn: discord.ui.Button):
                 tem_permissao = inter.user.guild_permissions.administrator or any(cid in [r.id for r in inter.user.roles] for cid in cargos_aprov)
                 if not tem_permissao:
-                    return await inter.response.send_message("❌ Não pode!", ephemeral=True)
+                    return await inter.response.send_message("❌ Sem permissão!", ephemeral=True)
 
                 dados["status"] = "aceita"
                 if guild_id not in historico: historico[guild_id] = {}
@@ -329,7 +316,7 @@ class FormJustificativa(discord.ui.Modal, title="📝 Enviar Justificativa"):
             async def recusar(self, inter: discord.Interaction, btn: discord.ui.Button):
                 tem_permissao = inter.user.guild_permissions.administrator or any(cid in [r.id for r in inter.user.roles] for cid in cargos_aprov)
                 if not tem_permissao:
-                    return await inter.response.send_message("❌ Não pode!", ephemeral=True)
+                    return await inter.response.send_message("❌ Sem permissão!", ephemeral=True)
 
                 dados["status"] = "recusada"
                 if guild_id not in historico: historico[guild_id] = {}
@@ -348,7 +335,8 @@ class FormJustificativa(discord.ui.Modal, title="📝 Enviar Justificativa"):
         await canal_sol.send(embed=embed, view=Botoes())
         await interaction.response.send_message("✅ Enviado!", ephemeral=True)
 
-@tree.command(name="painel", description="Mostra o painel principal")
+# ---------------------- 🚀 PAINEL PRINCIPAL ----------------------
+@tree.command(name="painel", description="Mostra painel de justificativas")
 async def painel(interaction: discord.Interaction):
     guild_id = str(interaction.guild.id)
     dados_guild = config.get(guild_id, {})
@@ -372,6 +360,7 @@ async def painel(interaction: discord.Interaction):
 
     await interaction.response.send_message(embed=embed, view=ViewPainel())
 
+# ---------------------- 🔄 ATUALIZAR HISTÓRICO JUSTIFICATIVAS ----------------------
 async def atualizar_historico(guild):
     guild_id = str(guild.id)
     dados_guild = config.get(guild_id, {})
@@ -389,8 +378,8 @@ async def atualizar_historico(guild):
     emb = discord.Embed(title="📜 Histórico Justificativas", description=texto or "Vazio", color=discord.Color.blurple())
     await canal_hist.send(embed=emb)
 
-# ---------------------- PERSONALIZAÇÃO ----------------------
-@tree.command(name="título", description="Muda o título do painel")
+# ---------------------- ⚙️ PERSONALIZAÇÃO ----------------------
+@tree.command(name="título", description="Muda título do painel")
 async def titulo(interaction: discord.Interaction, *, texto: str):
     if not interaction.user.guild_permissions.administrator: return
     guild_id = str(interaction.guild.id)
@@ -399,7 +388,7 @@ async def titulo(interaction: discord.Interaction, *, texto: str):
     salvar_dados(CONFIG_FILE, config)
     await interaction.response.send_message(f"✅ Título: {texto}")
 
-@tree.command(name="descrição", description="Muda a descrição do painel")
+@tree.command(name="descrição", description="Muda descrição do painel")
 async def descricao(interaction: discord.Interaction, *, texto: str):
     if not interaction.user.guild_permissions.administrator: return
     guild_id = str(interaction.guild.id)
@@ -417,7 +406,7 @@ async def tumber(interaction: discord.Interaction, link: str):
     salvar_dados(CONFIG_FILE, config)
     await interaction.response.send_message(f"✅ Imagem definida!")
 
-@tree.command(name="limparhistorico", description="Apaga todo o histórico DESSE SERVIDOR")
+@tree.command(name="limparhistorico", description="Apaga histórico do servidor")
 async def limparhistorico(interaction: discord.Interaction):
     if not interaction.user.guild_permissions.administrator: return
     guild_id = str(interaction.guild.id)
@@ -425,6 +414,6 @@ async def limparhistorico(interaction: discord.Interaction):
     salvar_dados(HISTORICO_FILE, historico)
     await interaction.response.send_message("✅ Histórico limpo!")
 
-# ---------------------- RODAR BOT ----------------------
+# ---------------------- 🚀 INICIAR BOT ----------------------
 keep_alive()
 bot.run(TOKEN)
