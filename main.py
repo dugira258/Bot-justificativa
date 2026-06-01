@@ -11,19 +11,23 @@ from keep_alive import keep_alive
 # ---------------------- 🛡️ SEGURANÇA TOTAL 🛡️ ----------------------
 TOKEN = os.environ.get("TOKEN")
 if not TOKEN:
-    print("🔴 TOKEN NÃO ENCONTRADO! BOT PARADO.")
+    print("🔴 TOKEN NÃO ENCONTRADO! BOT PARADO POR SEGURANÇA.")
     exit()
 
-# Nomes de arquivos ocultos e seguros
+# Nomes de arquivos ocultos e criptografados
 CONFIG_FILE = ".cfg_secure_9f2d.json"
 HISTORICO_FILE = ".hist_secure_7x4a.json"
 CHAMADA_FILE = ".cham_secure_3z8b.json"
 
-intents = discord.Intents.all()
+# Intents básicos (sem áudio, evita erro)
+intents = discord.Intents.default()
+intents.message_content = True
+intents.members = True
+
 bot = commands.Bot(command_prefix="/", intents=intents)
 tree = bot.tree
 
-# ---------------------- 🔐 SISTEMA DE CRIPTOGRAFIA (IMPOSSÍVEL LER DADOS) ----------------------
+# ---------------------- 🔐 SISTEMA DE CRIPTOGRAFIA ----------------------
 def codificar_dados(dados):
     texto_json = json.dumps(dados, indent=4, ensure_ascii=False)
     return base64.b64encode(texto_json.encode('utf-8')).decode('utf-8')
@@ -35,7 +39,7 @@ def decodificar_dados(texto_codificado):
     except:
         return {}
 
-# ---------------------- 📂 FUNÇÕES DE CARREGAR/SALVAR SEGURAS 📂 ----------------------
+# ---------------------- 📂 FUNÇÕES DE CARREGAR/SALVAR ----------------------
 def carregar_dados(arquivo):
     try:
         with open(arquivo, "r", encoding="utf-8") as f:
@@ -51,7 +55,7 @@ def salvar_dados(arquivo, dados):
     except Exception as e:
         print(f"Erro ao salvar: {e}")
 
-# Carrega os dados
+# Carrega dados
 config = carregar_dados(CONFIG_FILE)
 historico = carregar_dados(HISTORICO_FILE)
 dados_chamada = carregar_dados(CHAMADA_FILE)
