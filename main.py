@@ -98,7 +98,7 @@ async def configcanal(interaction: discord.Interaction, tipo: app_commands.Choic
     salvar_dados(CONFIG_FILE, config)
     await interaction.response.send_message(f"✅ Canal de {tipo.name}: {canal_obj.mention}", ephemeral=True)
 
-# ---------------------- 🚀 HISTÓRICO DE CHAMADAS (NOVO) ----------------------
+# ---------------------- 🚀 HISTÓRICO DE CHAMADAS ----------------------
 @tree.command(name="historicocmh", description="Define canal onde aparecerá o histórico de chamadas")
 async def historicocmh(interaction: discord.Interaction, canal: str):
     if not interaction.user.guild_permissions.administrator:
@@ -121,7 +121,7 @@ async def historicocmh(interaction: discord.Interaction, canal: str):
     await interaction.response.send_message(f"✅ Canal Histórico de Chamadas: {canal_obj.mention}", ephemeral=True)
 
 # ---------------------- 🚀 CARGOS APROVADORES ----------------------
-@tree.command(name="addcargoaprovador", description="Adiciona cargo que aprova")
+@tree.command(name="addcargoaprovador", description="Adiciona cargo que aprova justificativas")
 async def addcargoaprovador(interaction: discord.Interaction, cargo: discord.Role):
     if not interaction.user.guild_permissions.administrator:
         return await interaction.response.send_message("❌ Sem permissão!", ephemeral=True)
@@ -151,8 +151,8 @@ async def listacargosaprovadores(interaction: discord.Interaction):
         if cargo: texto += f"• {cargo.mention}\n"
     await interaction.response.send_message(f"📋 Cargos:\n{texto}", ephemeral=True)
 
-# ---------------------- 🚀 CONFIG PAINEL COM EDIÇÃO COMPLETA (NOVO) ----------------------
-@tree.command(name="configpainel", description="Edita todas as informações do painel de justificativas")
+# ---------------------- 🚀 CONFIG PAINEL (EDIÇÃO COMPLETA) ----------------------
+@tree.command(name="configpainel", description="Edita Título, Descrição, Botão, Rodapé e Imagem do painel")
 async def configpainel(interaction: discord.Interaction):
     if not interaction.user.guild_permissions.administrator:
         return await interaction.response.send_message("❌ Sem permissão!", ephemeral=True)
@@ -200,16 +200,16 @@ async def configpainel(interaction: discord.Interaction):
 
     await interaction.response.send_modal(EditarPainel())
 
-# ---------------------- 🚀 SISTEMA DE CHAMADAS ----------------------
-@tree.command(name="configchm", description="Configura Chamada e Abre Painel")
-async def configchm(interaction: discord.Interaction):
+# ---------------------- 🚀 SISTEMA DE CHAMADAS /PAINELCMH ----------------------
+@tree.command(name="painelcmh", description="Abre e configura o painel de chamadas")
+async def painelcmh(interaction: discord.Interaction):
     if not interaction.user.guild_permissions.administrator:
         return await interaction.response.send_message("❌ Sem permissão!", ephemeral=True)
 
     class EditarChamada(discord.ui.Modal, title="⚙️ Configurar Chamada"):
         titulo = discord.ui.TextInput(label="📌 Título", required=True, default="CHAMADA DE AÇÃO")
         descricao = discord.ui.TextInput(label="📝 Descrição", style=discord.TextStyle.paragraph, required=True, default="Marque presença confirmando sua participação")
-        acao = discord.ui.TextInput(label="⚡ Qual Ação?", required=True, placeholder="Ex: Reunião")
+        acao = discord.ui.TextInput(label="⚡ Qual Ação?", required=True, placeholder="Ex: Reunião, Treinamento")
         imagem = discord.ui.TextInput(label="🖼️ Link Imagem", required=False)
         cargo_membros = discord.ui.TextInput(label="👤 ID Cargo MEMBROS", required=True)
 
@@ -261,11 +261,11 @@ async def configchm(interaction: discord.Interaction):
                     await atualizar_historico_chamada(i.guild)
 
             await inter.channel.send(embed=embed, view=BotoesChamada())
-            await inter.response.send_message("✅ Chamada aberta!", ephemeral=True)
+            await inter.response.send_message("✅ Painel de Chamadas aberto!", ephemeral=True)
 
     await interaction.response.send_modal(EditarChamada())
 
-# ---------------------- 🔄 ATUALIZAR HISTÓRICO CHAMADA (MELHORADO EM EMBED) ----------------------
+# ---------------------- 🔄 ATUALIZAR HISTÓRICO CHAMADA (EMBED BONITO) ----------------------
 async def atualizar_historico_chamada(guild):
     guild_id = str(guild.id)
     dados = dados_chamada.get(guild_id, {})
@@ -300,30 +300,16 @@ async def atualizar_historico_chamada(guild):
             else:
                 ausentes.append(f"❌ {membro.display_name}")
 
-    # 🎨 VISUAL NOVO E ORGANIZADO EM EMBED
+    # 🎨 VISUAL NOVO E ORGANIZADO
     embed = discord.Embed(
         title="📋 HISTÓRICO DA CHAMADA",
         description=f"**Ação:** {dados.get('acao')}\n**Data:** {datetime.now().strftime('%d/%m/%Y %H:%M')}",
         color=discord.Color.purple()
     )
 
-    embed.add_field(
-        name="✅ PRESENTES",
-        value="\n".join(presentes) if presentes else "Ninguém marcou presença",
-        inline=False
-    )
-
-    embed.add_field(
-        name="❌ AUSENTES",
-        value="\n".join(ausentes) if ausentes else "Nenhum ausente",
-        inline=False
-    )
-
-    embed.add_field(
-        name="☑️ JUSTIFICADOS",
-        value="\n".join(justificados) if justificados else "Ninguém justificou",
-        inline=False
-    )
+    embed.add_field(name="✅ PRESENTES", value="\n".join(presentes) if presentes else "Ninguém marcou presença", inline=False)
+    embed.add_field(name="❌ AUSENTES", value="\n".join(ausentes) if ausentes else "Nenhum ausente", inline=False)
+    embed.add_field(name="☑️ JUSTIFICADOS", value="\n".join(justificados) if justificados else "Ninguém justificou", inline=False)
 
     canal_hist = bot.get_channel(config.get(guild_id, {}).get("canais", {}).get("historico_chamada"))
     if canal_hist:
@@ -456,7 +442,7 @@ async def atualizar_historico(guild):
     emb = discord.Embed(title="📜 Histórico Justificativas", description=texto or "Vazio", color=discord.Color.blurple())
     await canal_hist.send(embed=emb)
 
-# ---------------------- ⚙️ VER CONFIGURAÇÕES GERAIS (NOVO) ----------------------
+# ---------------------- ⚙️ VER CONFIGURAÇÕES GERAIS ----------------------
 @tree.command(name="configver", description="Ver todas as configurações separadas")
 async def configver(interaction: discord.Interaction):
     if not interaction.user.guild_permissions.administrator:
@@ -467,7 +453,7 @@ async def configver(interaction: discord.Interaction):
     canais = dados.get("canais", {})
     cargos = dados.get("cargos_aprovadores", [])
 
-    # 📌 CONFIGURAÇÕES DE JUSTIFICATIVAS
+    # 📌 JUSTIFICATIVAS
     embed_just = discord.Embed(title="📌 CONFIGURAÇÕES - JUSTIFICATIVAS", color=discord.Color.green())
     embed_just.add_field(name="Título", value=dados.get("titulo", "Padrão"), inline=False)
     embed_just.add_field(name="Descrição", value=dados.get("descricao", "Padrão"), inline=False)
@@ -478,34 +464,21 @@ async def configver(interaction: discord.Interaction):
     embed_just.add_field(name="Canal Solicitações", value=f"<#{canais.get('solicitação')}>" if canais.get('solicitação') else "❌ Não definido", inline=True)
     embed_just.add_field(name="Canal Histórico", value=f"<#{canais.get('histórico')}>" if canais.get('histórico') else "❌ Não definido", inline=True)
 
-    # 📢 CONFIGURAÇÕES DE CHAMADAS
+    # 📢 CHAMADAS
     embed_cham = discord.Embed(title="📢 CONFIGURAÇÕES - CHAMADAS", color=discord.Color.gold())
     embed_cham.add_field(name="Canal Histórico Chamada", value=f"<#{canais.get('historico_chamada')}>" if canais.get('historico_chamada') else "❌ Não definido", inline=False)
 
-    # 👤 CARGOS APROVADORES
+    # 👤 CARGOS
     texto_cargos = ""
     for cid in cargos:
         cargo = interaction.guild.get_role(cid)
         if cargo: texto_cargos += f"• {cargo.mention}\n"
     if not texto_cargos: texto_cargos = "Nenhum cargo cadastrado"
-
     embed_cargos = discord.Embed(title="👤 CARGOS APROVADORES", description=texto_cargos, color=discord.Color.orange())
 
     await interaction.response.send_message(embeds=[embed_just, embed_cham, embed_cargos], ephemeral=True)
 
-# ---------------------- ⚙️ COMANDOS ANTIGOS REMOVIDOS / SUBSTITUIDOS ----------------------
-@tree.command(name="título", description="⚠️ Use /configpainel para editar")
-async def titulo(interaction: discord.Interaction):
-    await interaction.response.send_message("ℹ️ Use **/configpainel** para editar tudo de uma vez!", ephemeral=True)
-
-@tree.command(name="descrição", description="⚠️ Use /configpainel para editar")
-async def descricao(interaction: discord.Interaction):
-    await interaction.response.send_message("ℹ️ Use **/configpainel** para editar tudo de uma vez!", ephemeral=True)
-
-@tree.command(name="tumber", description="⚠️ Use /configpainel para editar")
-async def tumber(interaction: discord.Interaction):
-    await interaction.response.send_message("ℹ️ Use **/configpainel** para editar tudo de uma vez!", ephemeral=True)
-
+# ---------------------- 🚀 LIMPAR HISTÓRICO ----------------------
 @tree.command(name="limparhistorico", description="Apaga histórico do servidor")
 async def limparhistorico(interaction: discord.Interaction):
     if not interaction.user.guild_permissions.administrator: return
