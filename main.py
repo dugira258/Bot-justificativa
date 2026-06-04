@@ -19,7 +19,7 @@ CONFIG_FILE = ".cfg_secure_9f2d.json"
 HISTORICO_FILE = ".hist_secure_7x4a.json"
 CHAMADA_FILE = ".cham_secure_3z8b.json"
 
-# Intents básicos (sem áudio, evita erro)
+# Intents básicos
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
@@ -70,9 +70,6 @@ async def on_ready():
     except Exception as e:
         print(f"❌ Erro: {e}")
 
-    while True:
-        await asyncio.sleep(300)
-
 # ---------------------- 🚀 CONFIGURAR CANAIS ----------------------
 @tree.command(name="configcanal", description="Define os canais do sistema")
 @app_commands.describe(tipo="Escolha", canal="ID ou Menção")
@@ -99,7 +96,29 @@ async def configcanal(interaction: discord.Interaction, tipo: app_commands.Choic
 
     config[guild_id]["canais"][tipo.value] = canal_obj.id
     salvar_dados(CONFIG_FILE, config)
-    await interaction.response.send_message(f"✅ Canal de {tipo.name}: {canal_obj.mention}")
+    await interaction.response.send_message(f"✅ Canal de {tipo.name}: {canal_obj.mention}", ephemeral=True)
+
+# ---------------------- 🚀 HISTÓRICO DE CHAMADAS (NOVO) ----------------------
+@tree.command(name="historicocmh", description="Define canal onde aparecerá o histórico de chamadas")
+async def historicocmh(interaction: discord.Interaction, canal: str):
+    if not interaction.user.guild_permissions.administrator:
+        return await interaction.response.send_message("❌ Sem permissão!", ephemeral=True)
+
+    try:
+        canal_id = int(canal.strip("<>#"))
+        canal_obj = bot.get_channel(canal_id)
+        if not canal_obj:
+            return await interaction.response.send_message("❌ Canal não encontrado!", ephemeral=True)
+    except:
+        return await interaction.response.send_message("❌ ID inválido!", ephemeral=True)
+
+    guild_id = str(interaction.guild.id)
+    if guild_id not in config: config[guild_id] = {}
+    if "canais" not in config[guild_id]: config[guild_id]["canais"] = {}
+
+    config[guild_id]["canais"]["historico_chamada"] = canal_obj.id
+    salvar_dados(CONFIG_FILE, config)
+    await interaction.response.send_message(f"✅ Canal Histórico de Chamadas: {canal_obj.mention}", ephemeral=True)
 
 # ---------------------- 🚀 CARGOS APROVADORES ----------------------
 @tree.command(name="addcargoaprovador", description="Adiciona cargo que aprova")
@@ -115,7 +134,7 @@ async def addcargoaprovador(interaction: discord.Interaction, cargo: discord.Rol
     if cargo.id not in config[guild_id]["cargos_aprovadores"]:
         config[guild_id]["cargos_aprovadores"].append(cargo.id)
         salvar_dados(CONFIG_FILE, config)
-        await interaction.response.send_message(f"✅ Cargo {cargo.mention} adicionado!")
+        await interaction.response.send_message(f"✅ Cargo {cargo.mention} adicionado!", ephemeral=True)
     else:
         await interaction.response.send_message(f"⚠️ Já existe!", ephemeral=True)
 
@@ -130,7 +149,56 @@ async def listacargosaprovadores(interaction: discord.Interaction):
     for cid in cargos_ids:
         cargo = interaction.guild.get_role(cid)
         if cargo: texto += f"• {cargo.mention}\n"
-    await interaction.response.send_message(f"📋 Cargos:\n{texto}")
+    await interaction.response.send_message(f"📋 Cargos:\n{texto}", ephemeral=True)
+
+# ---------------------- 🚀 CONFIG PAINEL COM EDIÇÃO COMPLETA (NOVO) ----------------------
+@tree.command(name="configpainel", description="Edita todas as informações do painel de justificativas")
+async def configpainel(interaction: discord.Interaction):
+    if not interaction.user.guild_permissions.administrator:
+        return await interaction.response.send_message("❌ Sem permissão!", ephemeral=True)
+
+    class EditarPainel(discord.ui.Modal, title="⚙️ Editar Painel de Justificativas"):
+        titulo = discord.ui.TextInput(
+            label="📌 Título do Painel",
+            required=True,
+            default=config.get(str(interaction.guild.id), {}).get("titulo", "📋 Sistema de Justificativas")
+        )
+        descricao = discord.ui.TextInput(
+            label="📝 Descrição",
+            style=discord.TextStyle.paragraph,
+            required=True,
+            default=config.get(str(interaction.guild.id), {}).get("descricao", "Informe NICK, ID, AÇÃO e MOTIVO.")
+        )
+        texto_botao = discord.ui.TextInput(
+            label="🔘 Texto do Botão",
+            required=True,
+            default=config.get(str(interaction.guild.id), {}).get("texto_botao", "📝 Enviar Justificativa")
+        )
+        rodape = discord.ui.TextInput(
+            label="📌 Rodapé / Texto final",
+            required=False,
+            default=config.get(str(interaction.guild.id), {}).get("rodape", "Sistema automático de justificativas")
+        )
+        imagem = discord.ui.TextInput(
+            label="🖼️ Link da Imagem",
+            required=False,
+            default=config.get(str(interaction.guild.id), {}).get("imagem", "")
+        )
+
+        async def on_submit(self, inter: discord.Interaction):
+            guild_id = str(inter.guild.id)
+            if guild_id not in config: config[guild_id] = {}
+
+            config[guild_id]["titulo"] = self.titulo.value
+            config[guild_id]["descricao"] = self.descricao.value
+            config[guild_id]["texto_botao"] = self.texto_botao.value
+            config[guild_id]["rodape"] = self.rodape.value
+            config[guild_id]["imagem"] = self.imagem.value or None
+
+            salvar_dados(CONFIG_FILE, config)
+            await inter.response.send_message("✅ Painel atualizado com sucesso!", ephemeral=True)
+
+    await interaction.response.send_modal(EditarPainel())
 
 # ---------------------- 🚀 SISTEMA DE CHAMADAS ----------------------
 @tree.command(name="configchm", description="Configura Chamada e Abre Painel")
@@ -197,7 +265,7 @@ async def configchm(interaction: discord.Interaction):
 
     await interaction.response.send_modal(EditarChamada())
 
-# ---------------------- 🔄 ATUALIZAR HISTÓRICO CHAMADA ----------------------
+# ---------------------- 🔄 ATUALIZAR HISTÓRICO CHAMADA (MELHORADO EM EMBED) ----------------------
 async def atualizar_historico_chamada(guild):
     guild_id = str(guild.id)
     dados = dados_chamada.get(guild_id, {})
@@ -212,52 +280,55 @@ async def atualizar_historico_chamada(guild):
 
     for uid, info in dados.get("presencas", {}).items():
         if info["status"] == "presente":
-            presentes.append(info["nome"])
+            presentes.append(f"✅ {info['nome']}")
         elif info["status"] == "ausente":
             if guild_id in historico and uid in historico[guild_id]:
                 if historico[guild_id][uid]["status"] == "aceita":
-                    justificados.append(info["nome"])
+                    justificados.append(f"☑️ {info['nome']}")
                 else:
-                    ausentes.append(info["nome"])
+                    ausentes.append(f"❌ {info['nome']}")
             else:
-                ausentes.append(info["nome"])
+                ausentes.append(f"❌ {info['nome']}")
 
     for membro in cargo_membros.members:
         if str(membro.id) not in dados.get("presencas", {}):
             if guild_id in historico and str(membro.id) in historico[guild_id]:
                 if historico[guild_id][str(membro.id)]["status"] == "aceita":
-                    justificados.append(membro.display_name)
+                    justificados.append(f"☑️ {membro.display_name}")
                 else:
-                    ausentes.append(membro.display_name)
+                    ausentes.append(f"❌ {membro.display_name}")
             else:
-                ausentes.append(membro.display_name)
+                ausentes.append(f"❌ {membro.display_name}")
 
-    texto = ""
-    if presentes:
-        for p in presentes: texto += f"{p} | ✅️ VAI COMPARECER\n"
-    else:
-        texto += "Ninguém marcou presença ainda\n"
+    # 🎨 VISUAL NOVO E ORGANIZADO EM EMBED
+    embed = discord.Embed(
+        title="📋 HISTÓRICO DA CHAMADA",
+        description=f"**Ação:** {dados.get('acao')}\n**Data:** {datetime.now().strftime('%d/%m/%Y %H:%M')}",
+        color=discord.Color.purple()
+    )
 
-    texto += "\n———————————————————————————\n"
+    embed.add_field(
+        name="✅ PRESENTES",
+        value="\n".join(presentes) if presentes else "Ninguém marcou presença",
+        inline=False
+    )
 
-    if ausentes:
-        for a in ausentes: texto += f"{a} | ❌️ NÃO MARCOU PRESENÇA\n"
-    else:
-        texto += "Nenhum ausente\n"
+    embed.add_field(
+        name="❌ AUSENTES",
+        value="\n".join(ausentes) if ausentes else "Nenhum ausente",
+        inline=False
+    )
 
-    texto += "\n———————————————————————————\n"
+    embed.add_field(
+        name="☑️ JUSTIFICADOS",
+        value="\n".join(justificados) if justificados else "Ninguém justificou",
+        inline=False
+    )
 
-    if justificados:
-        for j in justificados: texto += f"{j} | ☑️ JUSTIFICOU\n"
-    else:
-        texto += "Ninguém justificou\n"
-
-    canal_hist = bot.get_channel(config.get(guild_id, {}).get("canais", {}).get("histórico"))
+    canal_hist = bot.get_channel(config.get(guild_id, {}).get("canais", {}).get("historico_chamada"))
     if canal_hist:
         await canal_hist.purge(limit=50)
-        emb = discord.Embed(title="📋 HISTÓRICO DA CHAMADA", description=texto, color=discord.Color.purple())
-        emb.set_footer(text=f"Ação: {dados.get('acao')}")
-        await canal_hist.send(embed=emb)
+        await canal_hist.send(embed=embed)
 
 # ---------------------- 🚀 SISTEMA DE JUSTIFICATIVA ----------------------
 class FormJustificativa(discord.ui.Modal, title="📝 Enviar Justificativa"):
@@ -351,14 +422,17 @@ async def painel(interaction: discord.Interaction):
 
     titulo = dados_guild.get("titulo", "📋 Sistema de Justificativas")
     desc = dados_guild.get("descricao", "Informe NICK, ID, AÇÃO e MOTIVO.")
+    texto_botao = dados_guild.get("texto_botao", "📝 Enviar Justificativa")
+    rodape = dados_guild.get("rodape", "")
     img = dados_guild.get("imagem")
 
     embed = discord.Embed(title=titulo, description=desc, color=discord.Color.green())
     if img: embed.set_thumbnail(url=img)
+    if rodape: embed.set_footer(text=rodape)
 
     class ViewPainel(discord.ui.View):
         def __init__(self): super().__init__(timeout=None)
-        @discord.ui.button(label="📝 Enviar Justificativa", style=discord.ButtonStyle.green, custom_id="form_just")
+        @discord.ui.button(label=texto_botao, style=discord.ButtonStyle.green, custom_id="form_just")
         async def abrir(self, inter: discord.Interaction, btn: discord.ui.Button):
             await inter.response.send_modal(FormJustificativa())
 
@@ -375,40 +449,62 @@ async def atualizar_historico(guild):
     await canal_hist.purge(limit=100)
     texto = ""
     for dado in historico.get(guild_id, {}).values():
-        if dado["status"] == "aceita": texto += f"{dado['nick']} | ✅️ ACEITA\n"
-        elif dado["status"] == "recusada": texto += f"{dado['nick']} | ❌️ RECUSADA\n"
-        else: texto += f"{dado['nick']} | 🕝 PENDENTE\n"
+        if dado["status"] == "aceita": texto += f"✅ {dado['nick']} | ACEITA\n"
+        elif dado["status"] == "recusada": texto += f"❌ {dado['nick']} | RECUSADA\n"
+        else: texto += f"🕝 {dado['nick']} | PENDENTE\n"
 
     emb = discord.Embed(title="📜 Histórico Justificativas", description=texto or "Vazio", color=discord.Color.blurple())
     await canal_hist.send(embed=emb)
 
-# ---------------------- ⚙️ PERSONALIZAÇÃO ----------------------
-@tree.command(name="título", description="Muda título do painel")
-async def titulo(interaction: discord.Interaction, *, texto: str):
-    if not interaction.user.guild_permissions.administrator: return
-    guild_id = str(interaction.guild.id)
-    if guild_id not in config: config[guild_id] = {}
-    config[guild_id]["titulo"] = texto
-    salvar_dados(CONFIG_FILE, config)
-    await interaction.response.send_message(f"✅ Título: {texto}")
+# ---------------------- ⚙️ VER CONFIGURAÇÕES GERAIS (NOVO) ----------------------
+@tree.command(name="configver", description="Ver todas as configurações separadas")
+async def configver(interaction: discord.Interaction):
+    if not interaction.user.guild_permissions.administrator:
+        return await interaction.response.send_message("❌ Sem permissão!", ephemeral=True)
 
-@tree.command(name="descrição", description="Muda descrição do painel")
-async def descricao(interaction: discord.Interaction, *, texto: str):
-    if not interaction.user.guild_permissions.administrator: return
     guild_id = str(interaction.guild.id)
-    if guild_id not in config: config[guild_id] = {}
-    config[guild_id]["descricao"] = texto
-    salvar_dados(CONFIG_FILE, config)
-    await interaction.response.send_message(f"✅ Descrição salva!")
+    dados = config.get(guild_id, {})
+    canais = dados.get("canais", {})
+    cargos = dados.get("cargos_aprovadores", [])
 
-@tree.command(name="tumber", description="Coloca imagem no painel")
-async def tumber(interaction: discord.Interaction, link: str):
-    if not interaction.user.guild_permissions.administrator: return
-    guild_id = str(interaction.guild.id)
-    if guild_id not in config: config[guild_id] = {}
-    config[guild_id]["imagem"] = link
-    salvar_dados(CONFIG_FILE, config)
-    await interaction.response.send_message(f"✅ Imagem definida!")
+    # 📌 CONFIGURAÇÕES DE JUSTIFICATIVAS
+    embed_just = discord.Embed(title="📌 CONFIGURAÇÕES - JUSTIFICATIVAS", color=discord.Color.green())
+    embed_just.add_field(name="Título", value=dados.get("titulo", "Padrão"), inline=False)
+    embed_just.add_field(name="Descrição", value=dados.get("descricao", "Padrão"), inline=False)
+    embed_just.add_field(name="Texto do Botão", value=dados.get("texto_botao", "Padrão"), inline=False)
+    embed_just.add_field(name="Rodapé", value=dados.get("rodape", "Padrão"), inline=False)
+    embed_just.add_field(name="Imagem", value=dados.get("imagem", "Nenhuma"), inline=False)
+    embed_just.add_field(name="Canal Painel", value=f"<#{canais.get('painel')}>" if canais.get('painel') else "❌ Não definido", inline=True)
+    embed_just.add_field(name="Canal Solicitações", value=f"<#{canais.get('solicitação')}>" if canais.get('solicitação') else "❌ Não definido", inline=True)
+    embed_just.add_field(name="Canal Histórico", value=f"<#{canais.get('histórico')}>" if canais.get('histórico') else "❌ Não definido", inline=True)
+
+    # 📢 CONFIGURAÇÕES DE CHAMADAS
+    embed_cham = discord.Embed(title="📢 CONFIGURAÇÕES - CHAMADAS", color=discord.Color.gold())
+    embed_cham.add_field(name="Canal Histórico Chamada", value=f"<#{canais.get('historico_chamada')}>" if canais.get('historico_chamada') else "❌ Não definido", inline=False)
+
+    # 👤 CARGOS APROVADORES
+    texto_cargos = ""
+    for cid in cargos:
+        cargo = interaction.guild.get_role(cid)
+        if cargo: texto_cargos += f"• {cargo.mention}\n"
+    if not texto_cargos: texto_cargos = "Nenhum cargo cadastrado"
+
+    embed_cargos = discord.Embed(title="👤 CARGOS APROVADORES", description=texto_cargos, color=discord.Color.orange())
+
+    await interaction.response.send_message(embeds=[embed_just, embed_cham, embed_cargos], ephemeral=True)
+
+# ---------------------- ⚙️ COMANDOS ANTIGOS REMOVIDOS / SUBSTITUIDOS ----------------------
+@tree.command(name="título", description="⚠️ Use /configpainel para editar")
+async def titulo(interaction: discord.Interaction):
+    await interaction.response.send_message("ℹ️ Use **/configpainel** para editar tudo de uma vez!", ephemeral=True)
+
+@tree.command(name="descrição", description="⚠️ Use /configpainel para editar")
+async def descricao(interaction: discord.Interaction):
+    await interaction.response.send_message("ℹ️ Use **/configpainel** para editar tudo de uma vez!", ephemeral=True)
+
+@tree.command(name="tumber", description="⚠️ Use /configpainel para editar")
+async def tumber(interaction: discord.Interaction):
+    await interaction.response.send_message("ℹ️ Use **/configpainel** para editar tudo de uma vez!", ephemeral=True)
 
 @tree.command(name="limparhistorico", description="Apaga histórico do servidor")
 async def limparhistorico(interaction: discord.Interaction):
@@ -416,7 +512,7 @@ async def limparhistorico(interaction: discord.Interaction):
     guild_id = str(interaction.guild.id)
     if guild_id in historico: del historico[guild_id]
     salvar_dados(HISTORICO_FILE, historico)
-    await interaction.response.send_message("✅ Histórico limpo!")
+    await interaction.response.send_message("✅ Histórico limpo!", ephemeral=True)
 
 # ---------------------- 🚀 INICIAR BOT ----------------------
 keep_alive()
